@@ -1,3 +1,13 @@
 <resources>
     <string name="app_name">BuildingRecognition</string>
+    <string name="title_home">Home</string>
+    <string name="title_upload">Upload</string>
+    <string name="title_setting">Setting</string>
+
+    <string name="btn_text_photo">Photo</string>
+    <string name="btn_text_album">Album</string>
+    <string name="btn_text_upload">Upload</string>
+
+    <string name="toast_image_not_found">Image not specified</string>
+
 </resources>
