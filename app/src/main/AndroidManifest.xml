@@ -25,7 +25,7 @@
 
         <provider
             android:name="android.support.v4.content.FileProvider"
-            android:authorities="com.yaoyue.buildingrecognition.provider"
+            android:authorities="com.yaoyue.buildingrecognition.fileprovider"
             android:exported="false"
             android:grantUriPermissions="true">
             <!-- ressource file to create -->
