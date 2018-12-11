@@ -26,8 +26,18 @@ import android.widget.ImageView;
 import android.widget.Toast;
 
 import java.io.File;
-import java.io.FileNotFoundException;
-import java.net.URI;
+import java.io.IOException;
+
+import okhttp3.Call;
+import okhttp3.Callback;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.Response;
+import rx.Observable;
+import rx.Scheduler;
+import rx.Subscriber;
+import rx.android.schedulers.AndroidSchedulers;
+import rx.schedulers.Schedulers;
 
 public class UploadFragment extends Fragment {
     public static final int REQUEST_CODE_PHOTO = 1;
@@ -123,12 +133,51 @@ public class UploadFragment extends Fragment {
     }
 
     protected void upload() {
-        if (mImageFile == null) {
-            Toast.makeText(getActivity(), R.string.toast_image_not_found, Toast.LENGTH_SHORT).show();
-        }
+        Observable.create(new Observable.OnSubscribe<String>() {
+            @Override
+            public void call(final Subscriber<? super String> subscriber) {
+                OkHttpClient okHttpClient = new OkHttpClient();
+                Request request = new Request.Builder().url("http://www.baidu.com").method("GET", null).build();
+                Call call = okHttpClient.newCall(request);
+                call.enqueue(new Callback() {
+                    @Override
+                    public void onFailure(Call call, IOException e) {
+                        subscriber.onError(e);
+                    }
+
+                    @Override
+                    public void onResponse(Call call, Response response) throws IOException {
+                        subscriber.onNext("success:" + response.toString());
+                        subscriber.onCompleted();
+                    }
+                });
+
+            }
+        })
+                .observeOn(Schedulers.io())
+                .subscribeOn(AndroidSchedulers.mainThread())
+                .subscribe(new Subscriber<String>() {
+                    @Override
+                    public void onCompleted() {
+
+                    }
+
+                    @Override
+                    public void onError(Throwable e) {
+                        e.printStackTrace();
+                        Toast.makeText(getContext(), "failed:" + e.getMessage(), Toast.LENGTH_SHORT).show();
+                    }
+
+                    @Override
+                    public void onNext(String s) {
+                        Log.d("toast", Thread.currentThread().getName());
+                        Toast.makeText(getContext(), s, Toast.LENGTH_SHORT).show();
+                    }
+                });
     }
 
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions,
+                                           @NonNull int[] grantResults) {
         Log.d("test", "request");
     }
 
