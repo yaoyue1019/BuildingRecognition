@@ -25,14 +25,18 @@ import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.Toast;
 
+import com.yaoyue.buildingrecognition.utils.BitmapUtil;
+
 import java.io.File;
 import java.io.IOException;
 
 import okhttp3.Call;
 import okhttp3.Callback;
+import okhttp3.FormBody;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
+import okhttp3.ResponseBody;
 import rx.Observable;
 import rx.Scheduler;
 import rx.Subscriber;
@@ -71,6 +75,10 @@ public class UploadFragment extends Fragment {
     public View onCreateView(LayoutInflater inflater, @Nullable ViewGroup container, Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_upload, null);
         initComponents(view);
+        mImageFile = new File("/sdcard/temp/photo.png");
+//        if(mImageFile.exists()){
+//            mImageFile.delete();
+//        }
         return view;
     }
 
@@ -110,7 +118,6 @@ public class UploadFragment extends Fragment {
 
     protected void openAlbum() {
         Intent intent = new Intent(Intent.ACTION_PICK, android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
-        mImageFile = new File("/sdcard/temp/photo.png");
         Uri uri = FileProvider.getUriForFile(getActivity(), "com.yaoyue.buildingrecognition.fileprovider", mImageFile);
         intent.putExtra(MediaStore.EXTRA_OUTPUT, uri);
         startActivityForResult(intent, REQUEST_CODE_ALBUM);
@@ -126,36 +133,53 @@ public class UploadFragment extends Fragment {
 
     protected void startCamera() {
         Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
-        mImageFile = new File("/sdcard/temp/photo.png");
         Uri uri = FileProvider.getUriForFile(getActivity(), "com.yaoyue.buildingrecognition.fileprovider", mImageFile);
         intent.putExtra(MediaStore.EXTRA_OUTPUT, uri);
         startActivityForResult(intent, REQUEST_CODE_PHOTO);
     }
 
-    protected void upload() {
+    protected void upload(){
+        if (checkPermissions(Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.READ_EXTERNAL_STORAGE)) {
+            startUpload();
+        } else {
+            requestPermissions(Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.READ_EXTERNAL_STORAGE);
+        }
+    }
+
+    protected void startUpload() {
         Observable.create(new Observable.OnSubscribe<String>() {
             @Override
             public void call(final Subscriber<? super String> subscriber) {
-                OkHttpClient okHttpClient = new OkHttpClient();
-                Request request = new Request.Builder().url("http://www.baidu.com").method("GET", null).build();
-                Call call = okHttpClient.newCall(request);
-                call.enqueue(new Callback() {
-                    @Override
-                    public void onFailure(Call call, IOException e) {
-                        subscriber.onError(e);
-                    }
+                if(mImageFile.exists()){
+                    Bitmap bmp = BitmapFactory.decodeFile(mImageFile.getAbsolutePath());
+                    Bitmap cmpBmp = BitmapUtil.compress(bmp,640,480);
+                    bmp.recycle();
+                    String base64 = BitmapUtil.bitmaptoString(cmpBmp);
+                    cmpBmp.recycle();
+                    FormBody builder = new FormBody.Builder()
+                            .add("base64",base64)
+                            .build();
+                    OkHttpClient okHttpClient = new OkHttpClient();
+                    Request request = new Request.Builder().url("http://www.baidu.com").method("GET", null).build();
+                    Call call = okHttpClient.newCall(request);
+                    call.enqueue(new Callback() {
+                        @Override
+                        public void onFailure(Call call, IOException e) {
+                            subscriber.onError(e);
+                        }
 
-                    @Override
-                    public void onResponse(Call call, Response response) throws IOException {
-                        subscriber.onNext("success:" + response.toString());
-                        subscriber.onCompleted();
-                    }
-                });
+                        @Override
+                        public void onResponse(Call call, Response response) throws IOException {
+                            subscriber.onNext("success:" + response.toString());
+                            subscriber.onCompleted();
+                        }
+                    });
 
+                }
             }
         })
-                .observeOn(Schedulers.io())
-                .subscribeOn(AndroidSchedulers.mainThread())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribeOn(Schedulers.io())
                 .subscribe(new Subscriber<String>() {
                     @Override
                     public void onCompleted() {
