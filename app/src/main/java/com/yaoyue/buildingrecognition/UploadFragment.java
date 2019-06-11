@@ -9,14 +9,12 @@ import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.net.Uri;
-import android.os.Environment;
-import android.provider.MediaStore;
 import android.os.Bundle;
+import android.provider.MediaStore;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.FileProvider;
-import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -29,6 +27,7 @@ import com.yaoyue.buildingrecognition.utils.BitmapUtil;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.concurrent.TimeUnit;
 
 import okhttp3.Call;
 import okhttp3.Callback;
@@ -36,9 +35,7 @@ import okhttp3.FormBody;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
-import okhttp3.ResponseBody;
 import rx.Observable;
-import rx.Scheduler;
 import rx.Subscriber;
 import rx.android.schedulers.AndroidSchedulers;
 import rx.schedulers.Schedulers;
@@ -47,6 +44,10 @@ public class UploadFragment extends Fragment {
     public static final int REQUEST_CODE_PHOTO = 1;
     public static final int REQUEST_CODE_ALBUM = 2;
     public static final int REQUEST_CODE_REQUEST_PERMISSION = 3;
+
+    public static final String SERVER_IP = "http://192.168.31.239";
+    //    public static final String SERVER_IP = "http://192.168.31.77";
+    public static final String POST_PAGE = "upload.php";
 
     protected Button btnAlbum;
     protected Button btnPhoto;
@@ -138,7 +139,7 @@ public class UploadFragment extends Fragment {
         startActivityForResult(intent, REQUEST_CODE_PHOTO);
     }
 
-    protected void upload(){
+    protected void upload() {
         if (checkPermissions(Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.READ_EXTERNAL_STORAGE)) {
             startUpload();
         } else {
@@ -150,17 +151,22 @@ public class UploadFragment extends Fragment {
         Observable.create(new Observable.OnSubscribe<String>() {
             @Override
             public void call(final Subscriber<? super String> subscriber) {
-                if(mImageFile.exists()){
-                    Bitmap bmp = BitmapFactory.decodeFile(mImageFile.getAbsolutePath());
-                    Bitmap cmpBmp = BitmapUtil.compress(bmp,640,480);
-                    bmp.recycle();
-                    String base64 = BitmapUtil.bitmaptoString(cmpBmp);
-                    cmpBmp.recycle();
-                    FormBody builder = new FormBody.Builder()
-                            .add("base64",base64)
+                Log.d("upload", "start upload");
+                if (bitmap != null) {
+                    Bitmap cmpBmp = BitmapUtil.compress(bitmap, 20);
+                    final String base64 = "data:image/png;base64," + BitmapUtil.bitmaptoString(cmpBmp);
+                    Log.d("bmp", base64);
+                    FormBody body = new FormBody.Builder()
+                            .add("image", base64)
                             .build();
-                    OkHttpClient okHttpClient = new OkHttpClient();
-                    Request request = new Request.Builder().url("http://www.baidu.com").method("GET", null).build();
+                    OkHttpClient okHttpClient = new OkHttpClient.Builder()
+                            .readTimeout(20, TimeUnit.SECONDS)
+                            .writeTimeout(20, TimeUnit.SECONDS)
+                            .build();
+                    Request request = new Request.Builder()
+                            .url(SERVER_IP + "/" + POST_PAGE)
+                            .post(body)
+                            .build();
                     Call call = okHttpClient.newCall(request);
                     call.enqueue(new Callback() {
                         @Override
@@ -171,6 +177,7 @@ public class UploadFragment extends Fragment {
                         @Override
                         public void onResponse(Call call, Response response) throws IOException {
                             subscriber.onNext("success:" + response.toString());
+                            Log.d("http", response.body().string());
                             subscriber.onCompleted();
                         }
                     });
@@ -240,6 +247,10 @@ public class UploadFragment extends Fragment {
     public void onDestroy() {
         setImage(null);
         super.onDestroy();
+    }
+
+    protected void queryResult(String url) {
+
     }
 
     protected void onActivityResultAlbum(int requestCode, int resultCode, Intent data) {
