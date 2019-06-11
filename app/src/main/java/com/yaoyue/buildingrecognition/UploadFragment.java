@@ -20,7 +20,9 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.ImageView;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.yaoyue.buildingrecognition.utils.BitmapUtil;
@@ -45,7 +47,8 @@ public class UploadFragment extends Fragment {
     public static final int REQUEST_CODE_ALBUM = 2;
     public static final int REQUEST_CODE_REQUEST_PERMISSION = 3;
 
-    public static final String SERVER_IP = "http://192.168.31.239";
+    public static final String PROTOL = "http://";
+    public static final String DEFAULT_IP = "http://192.168.199.134";
     //    public static final String SERVER_IP = "http://192.168.31.77";
     public static final String POST_PAGE = "upload.php";
 
@@ -53,6 +56,8 @@ public class UploadFragment extends Fragment {
     protected Button btnPhoto;
     protected Button btnUpload;
     protected ImageView ivPreview;
+    protected TextView tvOutput;
+    protected EditText edtIp;
 
     protected File mImageFile;
 
@@ -88,6 +93,8 @@ public class UploadFragment extends Fragment {
         btnPhoto = view.findViewById(R.id.btn_photo);
         btnUpload = view.findViewById(R.id.btn_upload);
         ivPreview = view.findViewById(R.id.iv_preview);
+        tvOutput = view.findViewById(R.id.tv_output);
+        edtIp = view.findViewById(R.id.edt_ip);
 
         btnAlbum.setOnClickListener(mOnClickListener);
         btnPhoto.setOnClickListener(mOnClickListener);
@@ -147,6 +154,15 @@ public class UploadFragment extends Fragment {
         }
     }
 
+    protected String getIp() {
+        String ip = edtIp.getText().toString();
+        if (ip == null || ip.isEmpty()) {
+            return DEFAULT_IP;
+        } else {
+            return ip;
+        }
+    }
+
     protected void startUpload() {
         Observable.create(new Observable.OnSubscribe<String>() {
             @Override
@@ -164,7 +180,7 @@ public class UploadFragment extends Fragment {
                             .writeTimeout(20, TimeUnit.SECONDS)
                             .build();
                     Request request = new Request.Builder()
-                            .url(SERVER_IP + "/" + POST_PAGE)
+                            .url(getIp() + "/" + POST_PAGE)
                             .post(body)
                             .build();
                     Call call = okHttpClient.newCall(request);
@@ -176,7 +192,7 @@ public class UploadFragment extends Fragment {
 
                         @Override
                         public void onResponse(Call call, Response response) throws IOException {
-                            subscriber.onNext("success:" + response.toString());
+                            subscriber.onNext(response.toString());
                             Log.d("http", response.body().string());
                             subscriber.onCompleted();
                         }
@@ -197,12 +213,14 @@ public class UploadFragment extends Fragment {
                     public void onError(Throwable e) {
                         e.printStackTrace();
                         Toast.makeText(getContext(), "failed:" + e.getMessage(), Toast.LENGTH_SHORT).show();
+                        tvOutput.setText(e.getMessage());
                     }
 
                     @Override
                     public void onNext(String s) {
                         Log.d("toast", Thread.currentThread().getName());
                         Toast.makeText(getContext(), s, Toast.LENGTH_SHORT).show();
+                        tvOutput.setText(s);
                     }
                 });
     }

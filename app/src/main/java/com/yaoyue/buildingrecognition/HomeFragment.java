@@ -10,7 +10,7 @@ import android.view.ViewGroup;
 public class HomeFragment extends Fragment {
     public View onCreateView(LayoutInflater inflater, @Nullable ViewGroup container, Bundle savedInstanceState) {
 
-        return null;
+        return inflater.inflate(R.layout.fragment_main,container,false);
     }
 
 }
